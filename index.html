@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Franco te entrena - Seguimiento alumnos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Chart.js para el gráfico de evolución -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+
+    header {
+      background: #222;
+      color: #fdd835; /* amarillo estilo "Franco te entrena" */
+      padding: 16px 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    main {
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    h3 {
+      margin-top: 16px;
+      margin-bottom: 4px;
+      color: #444;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px 16px;
+      align-items: flex-end;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: #555;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background: #fdd835;
+      color: #222;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    button:hover {
+      background: #fbc02d;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #eeeeee;
+      font-weight: 600;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .tag-bajo { background: #42a5f5; }        /* azul */
+    .tag-normal { background: #66bb6a; }      /* verde */
+    .tag-sobrepeso { background: #ffa726; }   /* naranja */
+    .tag-obesidad { background: #ef5350; }    /* rojo */
+
+    .muted {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    .ref-table {
+      font-size: 0.8rem;
+    }
+
+    .ref-table th, .ref-table td {
+      padding: 4px 6px;
+    }
+
+    @media (max-width: 800px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Franco te entrena – Control de alumnos</h1>
+  </header>
+
+  <main>
+    <!-- 1. BASE DE ALUMNOS -->
+    <section class="card">
+      <h2>1. Base de datos de alumnos</h2>
+      <div class="grid-2">
+        <!-- Formulario alumno -->
+        <div>
+          <h3>Agregar / actualizar alumno</h3>
+          <form id="alumnoForm" class="form-grid">
+            <div>
+              <label>Nombre y apellido</label>
+              <input type="text" id="alumnoNombre" required />
+            </div>
+            <div>
+              <label>Sexo</label>
+              <select id="alumnoSexo">
+                <option value="">Seleccionar</option>
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+              </select>
+            </div>
+            <div>
+              <label>Altura (m)</label>
+              <input type="number" id="alumnoAltura" step="0.01" min="0" />
+            </div>
+            <div>
+              <label>Peso actual (kg)</label>
+              <input type="number" id="alumnoPeso" step="0.1" min="0" />
+            </div>
+            <div>
+              <label>Observaciones</label>
+              <textarea id="alumnoObs"></textarea>
+            </div>
+            <div>
+              <button type="submit">Guardar alumno</button>
+              <p class="muted">Si ya existe un alumno con el mismo nombre, se actualiza.</p>
+            </div>
+          </form>
+
+          <h3>Listado de alumnos</h3>
+          <table id="tablaAlumnos">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Sexo</th>
+                <th>Altura (m)</th>
+                <th>Peso (kg)</th>
+                <th>IMC</th>
+                <th>Clasificación</th>
+                <th>Obs.</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Tabla de referencia IMC -->
+        <div>
+          <h3>Referencia IMC (OMS)</h3>
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>IMC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bajo peso</td><td>&lt; 18.5</td></tr>
+              <tr><td>Normal</td><td>18.5 – 24.9</td></tr>
+              <tr><td>Sobrepeso</td><td>25 – 29.9</td></tr>
+              <tr><td>Obesidad</td><td>&ge; 30</td></tr>
+            </tbody>
+          </table>
+          <p class="muted">
+            El IMC se calcula como peso / altura². Los colores en la tabla de alumnos indican la categoría.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CONTROL Y EVALUACIÓN -->
+    <section class="card">
+      <h2>2. Control y evaluación mensual</h2>
+      <h3>Nuevo control</h3>
+      <form id="controlForm" class="form-grid">
+        <div>
+          <label>Alumno</label>
+          <select id="controlAlumno" required></select>
+        </div>
+        <div>
+          <label>Fecha de pesaje</label>
+          <input type="date" id="controlFecha" required />
+        </div>
+        <div>
+          <label>Peso (kg)</label>
+          <input type="number" id="controlPeso" step="0.1" min="0" required />
+        </div>
+        <div>
+          <label>IMC actual (auto)</label>
+          <input type="text" id="controlIMC" readonly />
+        </div>
+        <div>
+          <label>% grasa</label>
+          <input type="number" id="controlGrasa" step="0.1" min="0" />
+        </div>
+        <div>
+          <label>% masa muscular</label>
+          <input type="number" id="controlMasa" step="0.1" min="0" />
+        </div>
+        <div>
+          <button type="submit">Guardar control</button>
+        </div>
+      </form>
+
+      <h3>Últimos controles (todos los alumnos)</h3>
+      <table id="tablaControles">
+        <thead>
+          <tr>
+            <th>Alumno</th>
+            <th>Fecha</th>
+            <th>Peso (kg)</th>
+            <th>IMC</th>
+            <th>% grasa</th>
+            <th>% masa</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- 3. EVOLUCIÓN POR ALUMNO -->
+    <section class="card">
+      <h2>3. Evolución por alumno</h2>
+      <div class="form-grid" style="grid-template-columns: 1fr auto;">
+        <div>
+          <label>Seleccionar alumno</label>
+          <select id="evoAlumno"></select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 16px;">
+        <div>
+          <h3>Historial</h3>
+          <table id="tablaEvolucion">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Peso (kg)</th>
+                <th>IMC</th>
+                <th>% grasa</th>
+                <th>% masa</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Gráfico de evolución (peso)</h3>
+          <canvas id="pesoChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ------- Estado en memoria + localStorage -------
+    let alumnos = [];
+    let controles = [];
+    let chart = null;
+
+    const STORAGE_KEY = "franco_entrenador_data_v1";
+
+    function cargarDesdeStorage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        alumnos = data.alumnos || [];
+        controles = data.controles || [];
+      } catch (e) {
+        console.error("Error parseando storage", e);
+      }
+    }
+
+    function guardarEnStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ alumnos, controles }));
+    }
+
+    // ------- Utilidades -------
+    function calcularIMC(peso, altura) {
+      if (!peso || !altura || altura <= 0) return null;
+      return peso / (altura * altura);
+    }
+
+    function clasificarIMC(imc) {
+      if (imc === null || isNaN(imc)) return { label: "-", clase: "" };
+      if (imc < 18.5) return { label: "Bajo peso", clase: "tag-bajo" };
+      if (imc < 25) return { label: "Normal", clase: "tag-normal" };
+      if (imc < 30) return { label: "Sobrepeso", clase: "tag-sobrepeso" };
+      return { label: "Obesidad", clase: "tag-obesidad" };
+    }
+
+    function formatearFechaISO(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleDateString("es-ES");
+    }
+
+    // ------- Renderizado UI -------
+    function renderAlumnos() {
+      const tbody = document.querySelector("#tablaAlumnos tbody");
+      tbody.innerHTML = "";
+      alumnos.forEach(al => {
+        const imc = calcularIMC(al.peso, al.altura);
+        const imcText = imc ? imc.toFixed(1) : "";
+        const cl = clasificarIMC(imc);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${al.nombre}</td>
+          <td>${al.sexo || ""}</td>
+          <td>${al.altura ? al.altura.toFixed(2) : ""}</td>
+          <td>${al.peso ? al.peso.toFixed(1) : ""}</td>
+          <td>${imcText}</td>
+          <td>${cl.label !== "-" ? `<span class="tag ${cl.clase}">${cl.label}</span>` : ""}</td>
+          <td>${al.obs || ""}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Actualizar selects
+      const selControl = document.getElementById("controlAlumno");
+      const selEvo = document.getElementById("evoAlumno");
+      [selControl, selEvo].forEach(sel => {
+        sel.innerHTML = "";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "Seleccionar alumno";
+        sel.appendChild(empty);
+        alumnos.forEach(al => {
+          const opt = document.createElement("option");
+          opt.value = al.id;
+          opt.textContent = al.nombre;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    function renderControles() {
+      const tbody = document.querySelector("#tablaControles tbody");
+      tbody.innerHTML = "";
+      controles
+        .slice()
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+        .forEach(c => {
+          const al = alumnos.find(a => a.id === c.alumnoId);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${al ? al.nombre : ""}</td>
+            <td>${formatearFechaISO(c.fecha)}</td>
+            <td>${c.peso.toFixed(1)}</td>
+            <td>${c.imc !== null ? c.imc.toFixed(0) : ""}</td>
+            <td>${c.grasa !== null ? c.grasa.toFixed(1) : ""}</td>
+            <td>${c.masa !== null ? c.masa.toFixed(1) : ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+    }
+
+    function renderEvolucion() {
+      const sel = document.getElementById("evoAlumno");
+      const alumnoId = sel.value;
+      const tbody = document.querySelector("#tablaEvolucion tbody");
+      tbody.innerHTML = "";
+
+      if (!alumnoId) {
+        if (chart) chart.destroy();
+        chart = null;
+        return;
+      }
+
+      const registros = controles
+        .filter(c => c.alumnoId === alumnoId)
+        .slice()
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      const labels = [];
+      const pesos = [];
+
+      registros.forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${formatearFechaISO(c.fecha)}</td>
+          <td>${c.peso.toFixed(1)}</td>
+          <td>${c.imc !== null ? c.imc.toFixed(0) : ""}</td>
+          <td>${c.grasa !== null ? c.grasa.toFixed(1) : ""}</td>
+          <td>${c.masa !== null ? c.masa.toFixed(1) : ""}</td>
+        `;
+        tbody.appendChild(tr);
+
+        labels.push(formatearFechaISO(c.fecha));
+        pesos.push(c.peso);
+      });
+
+      const ctx = document.getElementById("pesoChart");
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Peso (kg)",
+            data: pesos,
+            tension: 0.2,
+            borderWidth: 2,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              ticks: { maxRotation: 45, minRotation: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    // ------- Eventos -------
+    document.getElementById("alumnoForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const nombre = document.getElementById("alumnoNombre").value.trim();
+      const sexo = document.getElementById("alumnoSexo").value;
+      const altura = parseFloat(document.getElementById("alumnoAltura").value);
+      const peso = parseFloat(document.getElementById("alumnoPeso").value);
+      const obs = document.getElementById("alumnoObs").value.trim();
+
+      if (!nombre) {
+        alert("Escribe el nombre del alumno.");
+        return;
+      }
+
+      // Si existe un alumno con el mismo nombre, actualizamos
+      let alumno = alumnos.find(a => a.nombre.toLowerCase() === nombre.toLowerCase());
+      if (alumno) {
+        alumno.sexo = sexo;
+        alumno.altura = isNaN(altura) ? null : altura;
+        alumno.peso = isNaN(peso) ? null : peso;
+        alumno.obs = obs;
+      } else {
+        alumno = {
+          id: Date.now().toString(),
+          nombre,
+          sexo,
+          altura: isNaN(altura) ? null : altura,
+          peso: isNaN(peso) ? null : peso,
+          obs
+        };
+        alumnos.push(alumno);
+      }
+
+      guardarEnStorage();
+      renderAlumnos();
+      alert("Alumno guardado correctamente.");
+      e.target.reset();
+    });
+
+    // Recalcular IMC actual en el formulario de control cuando cambie alumno o peso
+    function actualizarIMCControl() {
+      const alumnoId = document.getElementById("controlAlumno").value;
+      const peso = parseFloat(document.getElementById("controlPeso").value);
+      const imcInput = document.getElementById("controlIMC");
+      const alumno = alumnos.find(a => a.id === alumnoId);
+      if (!alumno || isNaN(peso)) {
+        imcInput.value = "";
+        return;
+      }
+      const imc = calcularIMC(peso, alumno.altura);
+      imcInput.value = imc ? imc.toFixed(0) : "";
+    }
+
+    document.getElementById("controlAlumno").addEventListener("change", actualizarIMCControl);
+    document.getElementById("controlPeso").addEventListener("input", actualizarIMCControl);
+
+    document.getElementById("controlForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const alumnoId = document.getElementById("controlAlumno").value;
+      const fecha = document.getElementById("controlFecha").value;
+      const peso = parseFloat(document.getElementById("controlPeso").value);
+      const grasa = parseFloat(document.getElementById("controlGrasa").value);
+      const masa = parseFloat(document.getElementById("controlMasa").value);
+
+      if (!alumnoId || !fecha || isNaN(peso)) {
+        alert("Completa alumno, fecha y peso.");
+        return;
+      }
+
+      const alumno = alumnos.find(a => a.id === alumnoId);
+      const imc = calcularIMC(peso, alumno ? alumno.altura : null);
+
+      controles.push({
+        id: Date.now().toString(),
+        alumnoId,
+        fecha,
+        peso,
+        imc: imc || null,
+        grasa: isNaN(grasa) ? null : grasa,
+        masa: isNaN(masa) ? null : masa
+      });
+
+      guardarEnStorage();
+      renderControles();
+      renderEvolucion();
+      alert("Control guardado.");
+      e.target.reset();
+      document.getElementById("controlIMC").value = "";
+    });
+
+    document.getElementById("evoAlumno").addEventListener("change", renderEvolucion);
+
+    // ------- Inicio -------
+    cargarDesdeStorage();
+    renderAlumnos();
+    renderControles();
+    renderEvolucion();
+  </script>
+</body>
+</html>
