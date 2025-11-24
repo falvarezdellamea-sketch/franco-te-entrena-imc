@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>franco te entrena · Seguimiento de Peso</title>
-  <meta name="description" content="Sistema simple e intuitivo para seguimiento de peso corporal de alumnos – franco te entrena" />
+  <meta name="description" content="Sistema simple e intuitivo para seguimiento de peso corporal y composición, con gráficos, KPIs y reportes – franco te entrena" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Chart.js -->
@@ -17,13 +17,15 @@
       --card:#1f2937;         /* gris pizarra */
       --muted:#9ca3af;        /* subtítulos grises */
       --text:#e5e7eb;         /* texto claro */
-      --accent:#facc15;       /* amarillo marcas */
+      --accent:#facc15;       /* amarillo marca */
       --accent-700:#eab308;   /* hover */
       --ok:#22c55e;
       --warn:#f59e0b;
       --danger:#ef4444;
       --shadow:0 10px 30px rgba(0,0,0,.35);
       --radius:18px;
+      --fat:#fb7185;          /* rosa/rojo suave */
+      --muscle:#22d3ee;       /* cian */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -48,8 +50,9 @@
     .btn.secondary{background:#374151;color:var(--text)}
     .btn.ghost{background:transparent;border:1px solid #374151;color:var(--text)}
     .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    @media (max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+    @media (max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
     .kpi{background:#0b1220;border:1px solid #223047;border-radius:16px;padding:12px}
     .kpi .label{font-size:12px;color:var(--muted)}
     .kpi .value{font-weight:800;font-size:22px}
@@ -79,12 +82,13 @@
       <div class="toolbar">
         <button class="btn" id="btnExport">Exportar CSV</button>
         <button class="btn secondary" id="btnExportJSON">Exportar JSON</button>
+        <button class="btn secondary" id="btnTpl">Descargar plantilla CSV</button>
+        <button class="btn ghost" id="btnReport">Descargar reporte (PDF)</button>
         <label class="btn ghost" for="fileImport" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">Importar Excel/CSV <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" style="display:none"></label>
       </div>
     </header>
 
     <div class="grid">
-      <!-- Columna izquierda: gestión de alumnos y registros -->
       <div class="card">
         <h2>Alumnos</h2>
         <div class="section">
@@ -133,7 +137,7 @@
         </div>
 
         <hr style="border:0;border-top:1px solid #223047;margin:18px 0">
-        <h2>Registro de peso</h2>
+        <h2>Registro de peso y composición</h2>
         <div class="row">
           <div>
             <label>Fecha</label>
@@ -144,6 +148,16 @@
             <input id="logWeight" type="number" inputmode="decimal" placeholder="Ej: 75.2" />
           </div>
         </div>
+        <div class="row">
+          <div>
+            <label>% grasa</label>
+            <input id="logFat" type="number" inputmode="decimal" placeholder="Ej: 24.5" />
+          </div>
+          <div>
+            <label>% masa muscular</label>
+            <input id="logMuscle" type="number" inputmode="decimal" placeholder="Ej: 36.2" />
+          </div>
+        </div>
         <div class="section">
           <button class="btn" id="btnAddLog">Agregar registro</button>
           <button class="btn secondary" id="btnDeleteLog">Eliminar seleccionado</button>
@@ -151,13 +165,12 @@
 
         <div style="max-height:280px;overflow:auto;margin-top:10px">
           <table id="logsTable">
-            <thead><tr><th>Fecha</th><th>Peso (kg)</th><th>Cambio</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Peso (kg)</th><th>% Grasa</th><th>% Músculo</th><th>Cambio</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Columna derecha: análisis y gráfico -->
       <div class="card">
         <h2>Resumen</h2>
         <div class="section">
@@ -170,9 +183,16 @@
           <div class="kpi"><div class="label">Cambio total</div><div class="value" id="kpiTotal">—</div></div>
           <div class="kpi"><div class="label">Últimos 7 días</div><div class="value" id="kpi7">—</div></div>
           <div class="kpi"><div class="label">IMC</div><div class="value" id="kpiBMI">—</div></div>
+          <div class="kpi"><div class="label">% grasa (act./7d)</div><div class="value" id="kpiFat">—</div></div>
+          <div class="kpi"><div class="label">% músculo (act./7d)</div><div class="value" id="kpiMus">—</div></div>
         </div>
         <div style="margin:16px 0">
           <canvas id="chart" height="130"></canvas>
+        </div>
+        <h2 style="margin-top:16px">Composición corporal</h2>
+        <div class="section"><div class="pill" style="border-color:var(--fat);color:var(--fat)">• % grasa</div><div class="pill" style="border-color:var(--muscle);color:var(--muscle)">• % músculo</div></div>
+        <div style="margin:10px 0">
+          <canvas id="chartComp" height="130"></canvas>
         </div>
         <div class="row">
           <div>
@@ -194,28 +214,26 @@
   </div>
 
 <script>
-  // —— Utilidades ——
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
   const fmt = (n, d=1) => (n===null||Number.isNaN(n))? '—' : Number(n).toFixed(d).replace('.', ',');
   const toISODate = (d) => new Date(d).toISOString().slice(0,10);
 
-  // —— Estado ——
   const LS_STUDENTS = 'fte_students_v1';
-  const LS_LOGS = 'fte_logs_v1';
+  const LS_LOGS = 'fte_logs_v2';
   let students = JSON.parse(localStorage.getItem(LS_STUDENTS) || '[]');
-  let logs = JSON.parse(localStorage.getItem(LS_LOGS) || '{}'); // { [id]: [{date, weight}] }
+  let logs = JSON.parse(localStorage.getItem(LS_LOGS) || '{}');
   let selectedId = students[0]?.id || null;
-  let chart;
+  let chart, chartComp;
 
-  // —— Inicialización ——
   function init(){
     $('#year').textContent = new Date().getFullYear();
-    // Fecha por defecto: hoy
     $('#logDate').value = toISODate(new Date());
     fillStudentSelect();
     bindUI();
+    seedIfEmpty();
     renderAll();
+    applyStudentModeFromURL();
   }
 
   function bindUI(){
@@ -230,357 +248,186 @@
     $('#btnAddLog').onclick = addLog;
     $('#btnDeleteLog').onclick = deleteSelectedLog;
 
-    $('#btnApplyRange').onclick = renderChart;
+    $('#btnApplyRange').onclick = ()=>{ renderChart(); renderCompChart(); };
 
     $('#btnExport').onclick = exportCSV;
     $('#btnExportJSON').onclick = exportJSON;
+    $('#btnTpl').onclick = downloadTemplate;
+    $('#btnReport').onclick = downloadReport;
     $('#fileImport').addEventListener('change', importFile);
   }
 
   function uid(){ return 's_' + Math.random().toString(36).slice(2,9); }
-
-  function persist(){
-    localStorage.setItem(LS_STUDENTS, JSON.stringify(students));
-    localStorage.setItem(LS_LOGS, JSON.stringify(logs));
-  }
-
-  function clearStudentForm(){
-    $('#stName').value = '';
-    $('#stHeight').value = '';
-    $('#stStart').value = '';
-    $('#stTarget').value = '';
-    $('#stNotes').value = '';
-  }
+  function persist(){ localStorage.setItem(LS_STUDENTS, JSON.stringify(students)); localStorage.setItem(LS_LOGS, JSON.stringify(logs)); }
+  function clearStudentForm(){ $('#stName').value = ''; $('#stHeight').value = ''; $('#stStart').value = ''; $('#stTarget').value = ''; $('#stNotes').value = ''; }
 
   function fillStudentSelect(){
-    const sel = $('#studentSelect');
-    sel.innerHTML = '';
-    students.forEach(st => {
-      const opt = document.createElement('option');
-      opt.value = st.id; opt.textContent = st.name; sel.appendChild(opt);
-    });
-    if (students.length){
-      sel.value = selectedId || students[0].id;
-      selectedId = sel.value;
-    } else {
-      selectedId = null;
-    }
+    const sel = $('#studentSelect'); sel.innerHTML = '';
+    students.forEach(st => { const opt = document.createElement('option'); opt.value = st.id; opt.textContent = st.name; sel.appendChild(opt); });
+    if (students.length){ sel.value = selectedId || students[0].id; selectedId = sel.value; } else { selectedId = null; }
   }
 
   function filterSelectBySearch(){
     const q = $('#search').value.trim().toLowerCase();
-    const sel = $('#studentSelect');
-    sel.innerHTML = '';
-    students.filter(s => s.name.toLowerCase().includes(q))
-      .forEach(st => { const o=document.createElement('option'); o.value=st.id; o.textContent=st.name; sel.appendChild(o); });
-    if (sel.options.length) sel.value = sel.options[0].value;
-    selectedId = sel.value || null;
-    renderAll();
+    const sel = $('#studentSelect'); sel.innerHTML = '';
+    students.filter(s => s.name.toLowerCase().includes(q)).forEach(st => { const o=document.createElement('option'); o.value=st.id; o.textContent=st.name; sel.appendChild(o); });
+    if (sel.options.length) sel.value = sel.options[0].value; selectedId = sel.value || null; renderAll();
   }
 
-  // —— Alumnos ——
   function saveStudent(){
-    const name = $('#stName').value.trim();
-    if (!name) return alert('Añade un nombre');
-    const height = Number($('#stHeight').value) || null;
-    const start = Number($('#stStart').value) || null;
-    const target = Number($('#stTarget').value) || null;
-    const notes = $('#stNotes').value.trim();
-
-    // Si existe alumno con el mismo nombre, actualizamos
+    const name = $('#stName').value.trim(); if (!name) return alert('Añade un nombre');
+    const height = Number($('#stHeight').value) || null; const start = Number($('#stStart').value) || null; const target = Number($('#stTarget').value) || null; const notes = $('#stNotes').value.trim();
     const existing = students.find(s => s.name.toLowerCase() === name.toLowerCase());
-    if (existing){
-      existing.height = height; existing.start = start; existing.target = target; existing.notes = notes;
-      selectedId = existing.id;
-    } else {
-      const id = uid();
-      const st = {id, name, height, start, target, notes};
-      students.push(st);
-      logs[id] = [];
-      selectedId = id;
-      if (start){ logs[id].push({date: toISODate(new Date()), weight: start}); }
-    }
-    persist();
-    fillStudentSelect();
-    $('#studentForm').style.display = 'none';
-    renderAll();
+    if (existing){ existing.height = height; existing.start = start; existing.target = target; existing.notes = notes; selectedId = existing.id; }
+    else { const id = uid(); const st = {id, name, height, start, target, notes}; students.push(st); logs[id] = []; selectedId = id; if (start){ logs[id].push({date: toISODate(new Date()), weight: start}); } }
+    persist(); fillStudentSelect(); $('#studentForm').style.display = 'none'; renderAll();
   }
 
   function deleteStudent(){
-    if (!selectedId) return;
-    const st = students.find(s=>s.id===selectedId);
-    if (!st) return;
+    if (!selectedId) return; const st = students.find(s=>s.id===selectedId); if (!st) return;
     if (!confirm(`¿Eliminar a ${st.name} y todos sus registros?`)) return;
-    students = students.filter(s=>s.id!==selectedId);
-    delete logs[selectedId];
-    selectedId = students[0]?.id || null;
-    persist();
-    fillStudentSelect();
-    renderAll();
+    students = students.filter(s=>s.id!==selectedId); delete logs[selectedId]; selectedId = students[0]?.id || null; persist(); fillStudentSelect(); renderAll();
   }
 
-  // —— Registros ——
   function addLog(){
     if (!selectedId) return alert('Primero crea o selecciona un alumno');
-    const date = $('#logDate').value;
-    const w = Number($('#logWeight').value);
+    const date = $('#logDate').value; const w = Number($('#logWeight').value);
+    const fat = $('#logFat').value ? Number($('#logFat').value) : null; const muscle = $('#logMuscle').value ? Number($('#logMuscle').value) : null;
     if (!date || !w) return alert('Completa fecha y peso');
-    const arr = logs[selectedId] || (logs[selectedId] = []);
-    const ix = arr.findIndex(x=>x.date===date);
-    if (ix>=0) arr[ix].weight = w; else arr.push({date, weight:w});
-    arr.sort((a,b)=>a.date.localeCompare(b.date));
-    persist();
-    renderAll();
+    const arr = logs[selectedId] || (logs[selectedId] = []); const ix = arr.findIndex(x=>x.date===date);
+    if (ix>=0) arr[ix] = { ...arr[ix], weight:w, fat, muscle }; else arr.push({date, weight:w, fat, muscle});
+    arr.sort((a,b)=>a.date.localeCompare(b.date)); persist(); renderAll();
   }
 
   function deleteSelectedLog(){
-    if (!selectedId) return;
-    const rows = $$('#logsTable tbody tr');
-    const toDelete = rows.filter(r=>r.querySelector('input[type="checkbox"]').checked);
+    if (!selectedId) return; const rows = $$('#logsTable tbody tr'); const toDelete = rows.filter(r=>r.querySelector('input[type="checkbox"]').checked);
     if (!toDelete.length) return alert('Selecciona al menos un registro');
-    const dates = new Set(toDelete.map(r=>r.dataset.date));
-    logs[selectedId] = (logs[selectedId]||[]).filter(x=>!dates.has(x.date));
-    persist();
-    renderAll();
+    const dates = new Set(toDelete.map(r=>r.dataset.date)); logs[selectedId] = (logs[selectedId]||[]).filter(x=>!dates.has(x.date)); persist(); renderAll();
   }
 
-  // —— Exportar / Importar ——
   function exportCSV(){
-    const lines = ['Alumno,Fecha,Peso,Altura_cm,Objetivo_kg,Notas'];
+    const lines = ['Alumno,Fecha,Peso,%Grasa,%Músculo,Altura_cm,Objetivo_kg,Notas'];
     students.forEach(st=>{
-      const arr = logs[st.id]||[];
-      if (!arr.length) lines.push(`${q(st.name)},,,,${q(st.notes||'')}`);
-      arr.forEach(l=>{
-        lines.push(`${q(st.name)},${l.date},${l.weight},${st.height||''},${st.target||''},${q(st.notes||'')}`)
-      });
+      const arr = logs[st.id]||[]; if (!arr.length) lines.push(`${q(st.name)},,,, ,${st.height||''},${st.target||''},${q(st.notes||'')}`);
+      arr.forEach(l=>{ lines.push(`${q(st.name)},${l.date},${l.weight!=null?l.weight:''},${l.fat!=null?l.fat:''},${l.muscle!=null?l.muscle:''},${st.height||''},${st.target||''},${q(st.notes||'')}`) });
     });
     download('fte_datos.csv', lines.join('\n'));
   }
 
-  function exportJSON(){
-    const data = { students, logs };
-    download('fte_datos.json', JSON.stringify(data,null,2));
-  }
-
+  function exportJSON(){ const data = { students, logs }; download('fte_datos.json', JSON.stringify(data,null,2)); }
+  function downloadTemplate(){ const tpl = ['Alumno,Fecha,Peso,%Grasa,%Músculo,Altura,Objetivo,Notas','Ejemplo Alumno,2025-01-10,78,24.5,36.2,170,70,Inicio del plan'].join('\n'); download('plantilla_francteentrena.csv', tpl); }
   function q(s){ return '"'+String(s).replaceAll('"','""')+'"'; }
-
-  function download(filename, content){
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
-    a.download = filename; a.click(); URL.revokeObjectURL(a.href);
-  }
+  function download(filename, content){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'})); a.download = filename; a.click(); URL.revokeObjectURL(a.href); }
 
   async function importFile(evt){
-    const file = evt.target.files[0];
-    if (!file) return;
-    const data = await file.arrayBuffer();
-    const wb = XLSX.read(data, {type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, {raw:true});
-    // Espera columnas: Name/Alumno, Date/Fecha, Weight/Peso, Height/Altura, Target/Objetivo, Notes/Notas
+    const file = evt.target.files[0]; if (!file) return; const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array'}); const ws = wb.Sheets[wb.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(ws, {raw:true});
     const map = (row, ...keys) => keys.find(k => k in row);
-
     rows.forEach(r=>{
-      const nameKey = map(r,'Alumno','Name','NOMBRE','nombre');
-      const dateKey = map(r,'Fecha','Date','FECHA','date');
-      const weightKey = map(r,'Peso','Weight','PESO','weight');
-      const heightKey = map(r,'Altura','Height','ALTURA');
-      const targetKey = map(r,'Objetivo','Target','OBJETIVO');
-      const notesKey = map(r,'Notas','Notes','NOTAS');
-      const name = nameKey? String(r[nameKey]).trim() : null;
-      if (!name) return;
-      let st = students.find(s=>s.name.toLowerCase()===name.toLowerCase());
-      if (!st){
-        st = { id: uid(), name, height: null, start: null, target: null, notes: '' };
-        students.push(st); logs[st.id] = [];
-      }
-      if (heightKey && r[heightKey]) st.height = Number(r[heightKey]) || st.height;
-      if (targetKey && r[targetKey]) st.target = Number(r[targetKey]) || st.target;
-      if (notesKey && r[notesKey]) st.notes = String(r[notesKey]);
+      const nameKey=map(r,'Alumno','Name','NOMBRE','nombre'); const dateKey=map(r,'Fecha','Date','FECHA','date'); const weightKey=map(r,'Peso','Weight','PESO','weight');
+      const heightKey=map(r,'Altura','Height','ALTURA'); const targetKey=map(r,'Objetivo','Target','OBJETIVO'); const notesKey=map(r,'Notas','Notes','NOTAS');
+      const fatKey=map(r,'%Grasa','Grasa','Body fat','Fat','% fat','BF'); const muscleKey=map(r,'%Músculo','%Musculo','Músculo','Musculo','Muscle','Skeletal muscle');
+      const name = nameKey? String(r[nameKey]).trim() : null; if (!name) return;
+      let st = students.find(s=>s.name.toLowerCase()===name.toLowerCase()); if (!st){ st = { id: uid(), name, height: null, start: null, target: null, notes: '' }; students.push(st); logs[st.id] = []; }
+      if (heightKey && r[heightKey]) st.height = Number(r[heightKey]) || st.height; if (targetKey && r[targetKey]) st.target = Number(r[targetKey]) || st.target; if (notesKey && r[notesKey]) st.notes = String(r[notesKey]);
       if (dateKey && weightKey && r[weightKey]){
-        const date = normalizeDate(r[dateKey]);
-        const weight = Number(r[weightKey]);
-        if (date && weight){
-          const arr = logs[st.id];
-          const ix = arr.findIndex(x=>x.date===date);
-          if (ix>=0) arr[ix].weight = weight; else arr.push({date, weight});
-        }
+        const date = normalizeDate(r[dateKey]); const weight = Number(r[weightKey]);
+        const fat = fatKey && r[fatKey] != null ? Number(r[fatKey]) : null; const muscle = muscleKey && r[muscleKey] != null ? Number(r[muscleKey]) : null;
+        if (date && weight){ const arr = logs[st.id]; const ix = arr.findIndex(x=>x.date===date); const entry = {date, weight, fat, muscle}; if (ix>=0) arr[ix] = { ...arr[ix], ...entry }; else arr.push(entry); }
       }
     });
-    // Si algún alumno no tiene start y sí tiene primer registro, fijamos start al primero
-    students.forEach(st=>{
-      const arr = (logs[st.id]||[]).sort((a,b)=>a.date.localeCompare(b.date));
-      if (arr.length && (st.start==null)) st.start = arr[0].weight;
-    });
-
-    persist(); fillStudentSelect(); renderAll();
-    alert('Importación completada ✅');
-    evt.target.value = '';
+    students.forEach(st=>{ const arr = (logs[st.id]||[]).sort((a,b)=>a.date.localeCompare(b.date)); if (arr.length && (st.start==null)) st.start = arr[0].weight; });
+    persist(); fillStudentSelect(); renderAll(); alert('Importación completada ✅'); evt.target.value = '';
   }
 
-  function normalizeDate(v){
-    if (!v) return null;
-    if (v instanceof Date) return toISODate(v);
-    if (typeof v === 'number'){ // Excel serial
-      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
-      return toISODate(d);
-    }
-    const s = String(v);
-    // Formatos: DD/MM/AAAA, AAAA-MM-DD, MM/DD/AAAA
-    const iso = /^\d{4}-\d{2}-\d{2}$/;
-    if (iso.test(s)) return s;
-    const dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-    if (dmy){
-      const [_,d,m,y] = dmy; return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    }
-    const mdy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-    if (mdy){
-      const [_,m,d,y] = mdy; return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    }
-    return null;
-  }
+  function normalizeDate(v){ if (!v) return null; if (v instanceof Date) return toISODate(v); if (typeof v === 'number'){ const d = new Date(Math.round((v - 25569) * 86400 * 1000)); return toISODate(d);} const s = String(v);
+    const iso=/^\d{4}-\d{2}-\d{2}$/; if (iso.test(s)) return s; const dmy=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(dmy){const[_,d,m,y]=dmy;return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;} const mdy=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(mdy){const[_,m,d,y]=mdy;return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;} return null; }
 
-  // —— Render ——
-  function renderAll(){
-    fillStudentSelect();
-    renderHeader();
-    renderTable();
-    renderChart();
-  }
-
+  function renderAll(){ fillStudentSelect(); renderHeader(); renderTable(); renderChart(); renderCompChart(); }
   function getSelected(){ return students.find(s=>s.id===selectedId) || null; }
 
   function renderHeader(){
-    const st = getSelected();
-    $('#selectedName').textContent = st? st.name : '—';
-    $('#selectedHeight').textContent = st?.height ?? '—';
-    $('#selectedTarget').textContent = st?.target ?? '—';
-
-    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
-    arr.sort((a,b)=>a.date.localeCompare(b.date));
-
-    const current = arr.length? arr[arr.length-1].weight : null;
-    const start = st?.start ?? (arr[0]?.weight ?? null);
-    const total = (current!=null && start!=null)? current - start : null;
-    const last7 = changeInDays(arr,7);
-
+    const st = getSelected(); $('#selectedName').textContent = st? st.name : '—'; $('#selectedHeight').textContent = st?.height ?? '—'; $('#selectedTarget').textContent = st?.target ?? '—';
+    const arr = (st && logs[st.id]) ? [...logs[st.id]] : []; arr.sort((a,b)=>a.date.localeCompare(b.date));
+    const current = arr.length? arr[arr.length-1].weight : null; const start = st?.start ?? (arr[0]?.weight ?? null); const total = (current!=null && start!=null)? current - start : null; const last7 = changeInDays(arr,7);
     const bmi = (st?.height && current)? (current / Math.pow(st.height/100,2)) : null;
-
-    $('#kpiCurrent').textContent = fmt(current,1);
-    $('#kpiTotal').textContent = (total!=null? (total>0? '+' : '') + fmt(total,1) + ' kg' : '—');
-    $('#kpi7').textContent = (last7!=null? (last7>0? '+' : '') + fmt(last7,1) + ' kg' : '—');
-    $('#kpiBMI').textContent = bmi? fmt(bmi,1) : '—';
-
-    // KPI colores
-    setKpiColor('#kpiTotal', total);
-    setKpiColor('#kpi7', last7);
+    $('#kpiCurrent').textContent = fmt(current,1); $('#kpiTotal').textContent = (total!=null? (total>0? '+' : '') + fmt(total,1) + ' kg' : '—'); $('#kpi7').textContent = (last7!=null? (last7>0? '+' : '') + fmt(last7,1) + ' kg' : '—'); $('#kpiBMI').textContent = bmi? fmt(bmi,1) : '—';
+    setKpiColor('#kpiTotal', total); setKpiColor('#kpi7', last7);
+    const fat = deltaProp(arr,7,'fat'); const mus = deltaProp(arr,7,'muscle'); setKpiComp('kpiFat', fat); setKpiComp('kpiMus', mus);
   }
-
-  function setKpiColor(sel, val){
-    const el = $(sel).closest('.kpi');
-    el.classList.remove('good','warn','bad');
-    if (val==null) return;
-    // pérdida de peso = verde, ganancia = naranja/rojo
-    if (val < -0.1) el.classList.add('good');
-    else if (val <= 0.1) el.classList.add('warn');
-    else el.classList.add('bad');
-  }
-
-  function changeInDays(arr, days){
-    if (!arr.length) return null;
-    const to = new Date(arr[arr.length-1].date);
-    const from = new Date(to); from.setDate(from.getDate() - days);
-    const before = arr.filter(x=> new Date(x.date) <= to && new Date(x.date) >= from);
-    if (before.length<2) return null;
-    return before[before.length-1].weight - before[0].weight;
-  }
+  function setKpiColor(sel, val){ const el = $(sel).closest('.kpi'); el.classList.remove('good','warn','bad'); if (val==null) return; if (val < -0.1) el.classList.add('good'); else if (val <= 0.1) el.classList.add('warn'); else el.classList.add('bad'); }
+  function changeInDays(arr, days){ if (!arr.length) return null; const to = new Date(arr[arr.length-1].date); const from = new Date(to); from.setDate(from.getDate() - days); const before = arr.filter(x=> new Date(x.date) <= to && new Date(x.date) >= from); if (before.length<2) return null; return before[before.length-1].weight - before[0].weight; }
+  function deltaProp(arr, days, prop){ if (!arr.length) return {curr:null, chg:null}; const curr = (arr[arr.length-1][prop] ?? null); const to = new Date(arr[arr.length-1].date); const from = new Date(to); from.setDate(from.getDate() - days); const within = arr.filter(x=> new Date(x.date) <= to && new Date(x.date) >= from && x[prop]!=null); const chg = within.length>=2 ? (within[within.length-1][prop] - within[0][prop]) : null; return {curr, chg}; }
+  function setKpiComp(id, obj){ const el = document.getElementById(id); if (!el) return; el.textContent = (obj.curr==null? '—' : `${obj.curr.toFixed(1).replace('.',',')}%`) + (obj.chg==null? '' : `  (${obj.chg>0?'+':''}${obj.chg.toFixed(1).replace('.',',')}%)`); }
 
   function renderTable(){
-    const tbody = $('#logsTable tbody');
-    tbody.innerHTML = '';
-    const st = getSelected();
-    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
-    arr.sort((a,b)=>a.date.localeCompare(b.date));
-    let prev = null;
-    arr.forEach(x=>{
-      const tr = document.createElement('tr'); tr.dataset.date = x.date;
-      const diff = prev? (x.weight - prev.weight) : null; prev = x;
-      tr.innerHTML = `
+    const tbody = $('#logsTable tbody'); tbody.innerHTML = ''; const st = getSelected(); const arr = (st && logs[st.id]) ? [...logs[st.id]] : []; arr.sort((a,b)=>a.date.localeCompare(b.date)); let prev = null;
+    arr.forEach(x=>{ const tr = document.createElement('tr'); tr.dataset.date = x.date; const diff = prev? (x.weight - prev.weight) : null; prev = x; tr.innerHTML = `
         <td>${x.date}</td>
         <td>${fmt(x.weight,1)}</td>
+        <td>${x.fat==null?'—':fmt(x.fat,1)+' %'}</td>
+        <td>${x.muscle==null?'—':fmt(x.muscle,1)+' %'}</td>
         <td>${diff==null? '—' : (diff>0? '+' : '') + fmt(diff,1) + ' kg'}</td>
-        <td><input type="checkbox"></td>
-      `;
-      tbody.appendChild(tr);
-    });
+        <td><input type="checkbox"></td>`; tbody.appendChild(tr); });
   }
 
   function renderChart(){
-    const st = getSelected();
-    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
-    arr.sort((a,b)=>a.date.localeCompare(b.date));
-
-    const from = $('#fromDate').value ? new Date($('#fromDate').value) : null;
-    const to = $('#toDate').value ? new Date($('#toDate').value) : null;
-    const filtered = arr.filter(p=>{
-      const d = new Date(p.date);
-      return (!from || d>=from) && (!to || d<=to);
-    });
-
-    const labels = filtered.map(x=>x.date);
-    const weights = filtered.map(x=>x.weight);
-
-    const ctx = document.getElementById('chart');
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Peso (kg)',
-            data: weights,
-            borderColor: '#facc15',
-            backgroundColor: 'rgba(250,204,21,.12)',
-            tension: .3,
-            fill: true,
-            pointRadius: 3,
-          },
-          ...(st?.target? [{
-            label: 'Objetivo',
-            data: labels.map(()=>st.target),
-            borderDash: [6,6],
-            borderColor: '#9ca3af',
-            pointRadius: 0,
-          }] : [])
-        ]
-      },
-      options: {
-        plugins: { legend: { labels: { color: '#e5e7eb' } } },
-        scales: {
-          x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } },
-          y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } }
-        }
-      }
-    });
+    const st = getSelected(); const arr = (st && logs[st.id]) ? [...logs[st.id]] : []; arr.sort((a,b)=>a.date.localeCompare(b.date));
+    const from = $('#fromDate').value ? new Date($('#fromDate').value) : null; const to = $('#toDate').value ? new Date($('#toDate').value) : null;
+    const filtered = arr.filter(p=>{ const d = new Date(p.date); return (!from || d>=from) && (!to || d<=to); });
+    const labels = filtered.map(x=>x.date); const weights = filtered.map(x=>x.weight);
+    const ctx = document.getElementById('chart'); if (chart) chart.destroy(); chart = new Chart(ctx, { type: 'line', data: { labels, datasets: [ { label: 'Peso (kg)', data: weights, borderColor: '#facc15', backgroundColor: 'rgba(250,204,21,.12)', tension: .3, fill: true, pointRadius: 3 }, ...(st?.target? [{ label: 'Objetivo', data: labels.map(()=>st.target), borderDash: [6,6], borderColor: '#9ca3af', pointRadius: 0 }] : []) ] }, options: { plugins: { legend: { labels: { color: '#e5e7eb' } } }, scales: { x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } }, y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } } } } });
   }
 
-  // —— Carga inicial de demo si no hay datos ——
+  function renderCompChart(){
+    const st = getSelected(); const arr = (st && logs[st.id]) ? [...logs[st.id]] : []; arr.sort((a,b)=>a.date.localeCompare(b.date));
+    const from = $('#fromDate').value ? new Date($('#fromDate').value) : null; const to = $('#toDate').value ? new Date($('#toDate').value) : null; const filtered = arr.filter(p=>{ const d = new Date(p.date); return (!from || d>=from) && (!to || d<=to); });
+    const labels = filtered.map(x=>x.date); const fat = filtered.map(x=>x.fat); const muscle = filtered.map(x=>x.muscle);
+    const ctx = document.getElementById('chartComp'); if (chartComp) chartComp.destroy(); chartComp = new Chart(ctx, { type: 'line', data: { labels, datasets: [ { label: '% grasa', data: fat, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--fat').trim(), backgroundColor: 'rgba(251,113,133,.12)', tension:.3, pointRadius:3, spanGaps:true }, { label: '% músculo', data: muscle, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--muscle').trim(), backgroundColor: 'rgba(34,211,238,.12)', tension:.3, pointRadius:3, spanGaps:true } ] }, options: { plugins: { legend: { labels: { color: '#e5e7eb' } } }, scales: { x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } }, y: { ticks: { color: '#9ca3af', callback:v=>v+'%' }, grid: { color: 'rgba(255,255,255,.06)' }, suggestedMin: 0, suggestedMax: 50 } } } });
+  }
+
+  function downloadReport(){
+    const st = getSelected(); if (!st) return alert('No hay alumno seleccionado'); const arr = (logs[st.id]||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)); const chartImg = chart?.toBase64Image() || ''; const compImg = chartComp?.toBase64Image() || '';
+    const html = `<!doctype html><html><head><meta charset='utf-8'><title>Reporte ${st.name}</title>
+      <style>body{font-family:Inter,Arial,sans-serif;padding:20px;color:#111} h1{margin:0 0 6px} .muted{color:#555}
+      table{width:100%;border-collapse:collapse;margin-top:12px} th,td{border:1px solid #ddd;padding:8px;font-size:12px} th{background:#f3f4f6;text-align:left}
+      .k{display:flex;gap:12px;margin:10px 0} .pill{padding:4px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
+      @media print{.no-print{display:none}}</style></head><body>
+      <h1>franco te entrena — Reporte</h1>
+      <div class='muted'>Alumno: <b>${st.name}</b></div>
+      <div class='k'><div class='pill'>Altura: ${st.height??'—'} cm</div><div class='pill'>Objetivo: ${st.target??'—'} kg</div></div>
+      <h3>Evolución de peso</h3>${chartImg?`<img src='${chartImg}' style='max-width:100%'>`:''}
+      <h3>Composición corporal</h3>${compImg?`<img src='${compImg}' style='max-width:100%'>`:''}
+      <h3>Registros</h3>
+      <table><thead><tr><th>Fecha</th><th>Peso</th><th>% Grasa</th><th>% Músculo</th></tr></thead><tbody>
+      ${arr.map(x=>`<tr><td>${x.date}</td><td>${x.weight??''}</td><td>${x.fat??''}</td><td>${x.muscle??''}</td></tr>`).join('')}
+      </tbody></table>
+      <p class='muted'>Generado automáticamente — franco te entrena</p>
+      <button class='no-print' onclick='window.print()'>Imprimir/Guardar PDF</button>
+      </body></html>`; const w = window.open('', '_blank'); w.document.write(html); w.document.close();
+  }
+
+  function applyStudentModeFromURL(){
+    const params = new URLSearchParams(location.search); if (params.get('mode')!=='alumno') return;
+    document.title = 'franco te entrena · Progreso del alumno';
+    ['#btnNewStudent','#studentForm','#btnAddLog','#btnDeleteLog','#fileImport','#btnExport','#btnExportJSON','#btnTpl']
+      .forEach(s=>{ const el = document.querySelector(s); if (el) (el.closest('button,label,div')||el).style.display='none';});
+    const n = params.get('n'); if (n){ const match = students.find(s=>s.name.toLowerCase()===decodeURIComponent(n).toLowerCase()); if (match){ selectedId = match.id; const sel = $('#studentSelect'); if (sel){ sel.value = selectedId; sel.disabled = true; } renderAll(); } }
+    $$('#logsTable input[type="checkbox"]').forEach(x=>x.disabled=true);
+  }
+
   function seedIfEmpty(){
-    if (students.length) return;
-    const a = {id:uid(), name:'Alumno Demo', height:170, start:78, target:70, notes:'Ejemplo'};
+    if (students.length) return; const a = {id:uid(), name:'Alumno Demo', height:170, start:78, target:70, notes:'Ejemplo'};
     students.push(a); logs[a.id] = [
-      {date:'2025-10-01', weight:78},
-      {date:'2025-10-08', weight:77.1},
-      {date:'2025-10-15', weight:76.6},
-      {date:'2025-10-22', weight:76.0},
-      {date:'2025-11-05', weight:75.2},
-      {date:'2025-11-19', weight:74.9},
-    ];
-    persist();
+      {date:'2025-10-01', weight:78,   fat:25.5, muscle:34.0},
+      {date:'2025-10-08', weight:77.1, fat:25.1, muscle:34.3},
+      {date:'2025-10-15', weight:76.6, fat:24.7, muscle:34.5},
+      {date:'2025-10-22', weight:76.0, fat:24.2, muscle:34.9},
+      {date:'2025-11-05', weight:75.2, fat:23.9, muscle:35.1},
+      {date:'2025-11-19', weight:74.9, fat:23.6, muscle:35.3},
+    ]; persist();
   }
 
-  seedIfEmpty();
   init();
 </script>
 </body>
