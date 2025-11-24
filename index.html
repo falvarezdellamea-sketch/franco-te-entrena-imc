@@ -1,602 +1,587 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Franco te entrena - Seguimiento alumnos</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Chart.js para el gráfico de evolución -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <title>franco te entrena · Seguimiento de Peso</title>
+  <meta name="description" content="Sistema simple e intuitivo para seguimiento de peso corporal de alumnos – franco te entrena" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- SheetJS (XLSX) para importar Excel/CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 0;
-      color: #222;
+    :root{
+      --bg:#111827;           /* gris oscuro fondo */
+      --card:#1f2937;         /* gris pizarra */
+      --muted:#9ca3af;        /* subtítulos grises */
+      --text:#e5e7eb;         /* texto claro */
+      --accent:#facc15;       /* amarillo marcas */
+      --accent-700:#eab308;   /* hover */
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
     }
-
-    header {
-      background: #222;
-      color: #fdd835; /* amarillo estilo "Franco te entrena" */
-      padding: 16px 24px;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-
-    main {
-      padding: 16px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    h2 {
-      margin-top: 24px;
-      margin-bottom: 8px;
-      color: #333;
-    }
-
-    h3 {
-      margin-top: 16px;
-      margin-bottom: 4px;
-      color: #444;
-    }
-
-    .card {
-      background: #ffffff;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 16px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px 16px;
-      align-items: flex-end;
-    }
-
-    label {
-      font-size: 0.85rem;
-      color: #555;
-      display: block;
-      margin-bottom: 2px;
-    }
-
-    input, select, textarea, button {
-      font: inherit;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    input[type="date"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-
-    textarea {
-      min-height: 60px;
-      resize: vertical;
-    }
-
-    button {
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      background: #fdd835;
-      color: #222;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-
-    button:hover {
-      background: #fbc02d;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-      font-size: 0.9rem;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px 8px;
-      text-align: left;
-    }
-
-    th {
-      background: #eeeeee;
-      font-weight: 600;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .tag-bajo { background: #42a5f5; }        /* azul */
-    .tag-normal { background: #66bb6a; }      /* verde */
-    .tag-sobrepeso { background: #ffa726; }   /* naranja */
-    .tag-obesidad { background: #ef5350; }    /* rojo */
-
-    .muted {
-      font-size: 0.8rem;
-      color: #777;
-    }
-
-    .ref-table {
-      font-size: 0.8rem;
-    }
-
-    .ref-table th, .ref-table td {
-      padding: 4px 6px;
-    }
-
-    @media (max-width: 800px) {
-      .grid-2 {
-        grid-template-columns: 1fr;
-      }
-    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1200px;margin:auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:24px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#fff176);display:grid;place-items:center;color:#111827;font-weight:900;box-shadow:var(--shadow)}
+    h1{margin:0;font-size:clamp(20px,3vw,28px);color:var(--accent)}
+    .subtitle{color:var(--muted);font-size:14px}
+    .grid{display:grid;gap:16px;grid-template-columns:1.1fr 1.2fr}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .card h2{margin:0 0 8px;color:var(--accent);font-size:18px}
+    .section{display:flex;gap:16px;flex-wrap:wrap}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,textarea{width:100%;padding:12px 12px;border-radius:12px;border:1px solid #374151;background:#0b1220;color:var(--text);outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btn{appearance:none;border:none;border-radius:14px;padding:12px 14px;background:var(--accent);color:#111827;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn.secondary{background:#374151;color:var(--text)}
+    .btn.ghost{background:transparent;border:1px solid #374151;color:var(--text)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media (max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{background:#0b1220;border:1px solid #223047;border-radius:16px;padding:12px}
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .kpi .value{font-weight:800;font-size:22px}
+    .kpi.good .value{color:var(--ok)}
+    .kpi.warn .value{color:var(--warn)}
+    .kpi.bad .value{color:var(--danger)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #223047;font-size:14px}
+    th{color:var(--muted);font-weight:600;text-align:left}
+    tr:hover td{background:#0d1628}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#0b1220;border:1px solid #223047;color:var(--muted);font-size:12px}
+    .muted{color:var(--muted)}
+    .footer{margin-top:22px;color:var(--muted);font-size:12px;text-align:center}
+    .hint{font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Franco te entrena – Control de alumnos</h1>
-  </header>
-
-  <main>
-    <!-- 1. BASE DE ALUMNOS -->
-    <section class="card">
-      <h2>1. Base de datos de alumnos</h2>
-      <div class="grid-2">
-        <!-- Formulario alumno -->
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">FT</div>
         <div>
-          <h3>Agregar / actualizar alumno</h3>
-          <form id="alumnoForm" class="form-grid">
-            <div>
-              <label>Nombre y apellido</label>
-              <input type="text" id="alumnoNombre" required />
-            </div>
-            <div>
-              <label>Sexo</label>
-              <select id="alumnoSexo">
-                <option value="">Seleccionar</option>
-                <option value="F">Femenino</option>
-                <option value="M">Masculino</option>
-              </select>
-            </div>
-            <div>
-              <label>Altura (m)</label>
-              <input type="number" id="alumnoAltura" step="0.01" min="0" />
-            </div>
-            <div>
-              <label>Peso actual (kg)</label>
-              <input type="number" id="alumnoPeso" step="0.1" min="0" />
-            </div>
-            <div>
-              <label>Observaciones</label>
-              <textarea id="alumnoObs"></textarea>
-            </div>
-            <div>
-              <button type="submit">Guardar alumno</button>
-              <p class="muted">Si ya existe un alumno con el mismo nombre, se actualiza.</p>
-            </div>
-          </form>
+          <h1>franco te entrena</h1>
+          <div class="subtitle">Sistema intuitivo de seguimiento y evolución del peso</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="btnExport">Exportar CSV</button>
+        <button class="btn secondary" id="btnExportJSON">Exportar JSON</button>
+        <label class="btn ghost" for="fileImport" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">Importar Excel/CSV <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" style="display:none"></label>
+      </div>
+    </header>
 
-          <h3>Listado de alumnos</h3>
-          <table id="tablaAlumnos">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Sexo</th>
-                <th>Altura (m)</th>
-                <th>Peso (kg)</th>
-                <th>IMC</th>
-                <th>Clasificación</th>
-                <th>Obs.</th>
-              </tr>
-            </thead>
+    <div class="grid">
+      <!-- Columna izquierda: gestión de alumnos y registros -->
+      <div class="card">
+        <h2>Alumnos</h2>
+        <div class="section">
+          <div style="flex:1;min-width:260px">
+            <label>Buscar alumno</label>
+            <input id="search" placeholder="Escribe un nombre…" />
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label>Seleccionar</label>
+            <select id="studentSelect"></select>
+          </div>
+          <button class="btn" id="btnNewStudent">+ Nuevo alumno</button>
+        </div>
+
+        <div class="section" id="studentForm" style="display:none;width:100%">
+          <div class="row">
+            <div>
+              <label>Nombre</label>
+              <input id="stName" placeholder="Ej: Ana Pérez" />
+            </div>
+            <div>
+              <label>Altura (cm)</label>
+              <input id="stHeight" type="number" inputmode="decimal" placeholder="Ej: 170" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Peso inicial (kg)</label>
+              <input id="stStart" type="number" inputmode="decimal" placeholder="Ej: 78" />
+            </div>
+            <div>
+              <label>Objetivo (kg)</label>
+              <input id="stTarget" type="number" inputmode="decimal" placeholder="Ej: 70" />
+            </div>
+          </div>
+          <div>
+            <label>Notas</label>
+            <textarea id="stNotes" rows="2" placeholder="Preferencias, lesiones, recordatorios…"></textarea>
+          </div>
+          <div class="section">
+            <button class="btn" id="btnSaveStudent">Guardar alumno</button>
+            <button class="btn secondary" id="btnCancelStudent">Cancelar</button>
+            <button class="btn ghost" id="btnDeleteStudent" title="Elimina el alumno seleccionado y sus registros">Eliminar</button>
+          </div>
+          <div class="hint">Consejo: puedes importar tu Excel para crear alumnos y registros automáticamente.</div>
+        </div>
+
+        <hr style="border:0;border-top:1px solid #223047;margin:18px 0">
+        <h2>Registro de peso</h2>
+        <div class="row">
+          <div>
+            <label>Fecha</label>
+            <input id="logDate" type="date" />
+          </div>
+          <div>
+            <label>Peso (kg)</label>
+            <input id="logWeight" type="number" inputmode="decimal" placeholder="Ej: 75.2" />
+          </div>
+        </div>
+        <div class="section">
+          <button class="btn" id="btnAddLog">Agregar registro</button>
+          <button class="btn secondary" id="btnDeleteLog">Eliminar seleccionado</button>
+        </div>
+
+        <div style="max-height:280px;overflow:auto;margin-top:10px">
+          <table id="logsTable">
+            <thead><tr><th>Fecha</th><th>Peso (kg)</th><th>Cambio</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
-
-        <!-- Tabla de referencia IMC -->
-        <div>
-          <h3>Referencia IMC (OMS)</h3>
-          <table class="ref-table">
-            <thead>
-              <tr>
-                <th>Categoría</th>
-                <th>IMC</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Bajo peso</td><td>&lt; 18.5</td></tr>
-              <tr><td>Normal</td><td>18.5 – 24.9</td></tr>
-              <tr><td>Sobrepeso</td><td>25 – 29.9</td></tr>
-              <tr><td>Obesidad</td><td>&ge; 30</td></tr>
-            </tbody>
-          </table>
-          <p class="muted">
-            El IMC se calcula como peso / altura². Los colores en la tabla de alumnos indican la categoría.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2. CONTROL Y EVALUACIÓN -->
-    <section class="card">
-      <h2>2. Control y evaluación mensual</h2>
-      <h3>Nuevo control</h3>
-      <form id="controlForm" class="form-grid">
-        <div>
-          <label>Alumno</label>
-          <select id="controlAlumno" required></select>
-        </div>
-        <div>
-          <label>Fecha de pesaje</label>
-          <input type="date" id="controlFecha" required />
-        </div>
-        <div>
-          <label>Peso (kg)</label>
-          <input type="number" id="controlPeso" step="0.1" min="0" required />
-        </div>
-        <div>
-          <label>IMC actual (auto)</label>
-          <input type="text" id="controlIMC" readonly />
-        </div>
-        <div>
-          <label>% grasa</label>
-          <input type="number" id="controlGrasa" step="0.1" min="0" />
-        </div>
-        <div>
-          <label>% masa muscular</label>
-          <input type="number" id="controlMasa" step="0.1" min="0" />
-        </div>
-        <div>
-          <button type="submit">Guardar control</button>
-        </div>
-      </form>
-
-      <h3>Últimos controles (todos los alumnos)</h3>
-      <table id="tablaControles">
-        <thead>
-          <tr>
-            <th>Alumno</th>
-            <th>Fecha</th>
-            <th>Peso (kg)</th>
-            <th>IMC</th>
-            <th>% grasa</th>
-            <th>% masa</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <!-- 3. EVOLUCIÓN POR ALUMNO -->
-    <section class="card">
-      <h2>3. Evolución por alumno</h2>
-      <div class="form-grid" style="grid-template-columns: 1fr auto;">
-        <div>
-          <label>Seleccionar alumno</label>
-          <select id="evoAlumno"></select>
-        </div>
       </div>
 
-      <div class="grid-2" style="margin-top: 16px;">
-        <div>
-          <h3>Historial</h3>
-          <table id="tablaEvolucion">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Peso (kg)</th>
-                <th>IMC</th>
-                <th>% grasa</th>
-                <th>% masa</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+      <!-- Columna derecha: análisis y gráfico -->
+      <div class="card">
+        <h2>Resumen</h2>
+        <div class="section">
+          <div class="pill"><span id="selectedName">—</span></div>
+          <div class="pill">Altura: <span id="selectedHeight" class="muted">—</span> cm</div>
+          <div class="pill">Objetivo: <span id="selectedTarget" class="muted">—</span> kg</div>
         </div>
-        <div>
-          <h3>Gráfico de evolución (peso)</h3>
-          <canvas id="pesoChart"></canvas>
+        <div class="kpis" style="margin-top:8px">
+          <div class="kpi"><div class="label">Peso actual</div><div class="value" id="kpiCurrent">—</div></div>
+          <div class="kpi"><div class="label">Cambio total</div><div class="value" id="kpiTotal">—</div></div>
+          <div class="kpi"><div class="label">Últimos 7 días</div><div class="value" id="kpi7">—</div></div>
+          <div class="kpi"><div class="label">IMC</div><div class="value" id="kpiBMI">—</div></div>
+        </div>
+        <div style="margin:16px 0">
+          <canvas id="chart" height="130"></canvas>
+        </div>
+        <div class="row">
+          <div>
+            <label>Rango de fechas</label>
+            <div class="row">
+              <input id="fromDate" type="date">
+              <input id="toDate" type="date">
+            </div>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn" id="btnApplyRange">Aplicar</button>
+          </div>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
 
-  <script>
-    // ------- Estado en memoria + localStorage -------
-    let alumnos = [];
-    let controles = [];
-    let chart = null;
+    <div class="footer">© <span id="year"></span> franco te entrena · Colores: títulos amarillos, fondo gris oscuro, subtítulos grises.</div>
+  </div>
 
-    const STORAGE_KEY = "franco_entrenador_data_v1";
+<script>
+  // —— Utilidades ——
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const fmt = (n, d=1) => (n===null||Number.isNaN(n))? '—' : Number(n).toFixed(d).replace('.', ',');
+  const toISODate = (d) => new Date(d).toISOString().slice(0,10);
 
-    function cargarDesdeStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      try {
-        const data = JSON.parse(raw);
-        alumnos = data.alumnos || [];
-        controles = data.controles || [];
-      } catch (e) {
-        console.error("Error parseando storage", e);
+  // —— Estado ——
+  const LS_STUDENTS = 'fte_students_v1';
+  const LS_LOGS = 'fte_logs_v1';
+  let students = JSON.parse(localStorage.getItem(LS_STUDENTS) || '[]');
+  let logs = JSON.parse(localStorage.getItem(LS_LOGS) || '{}'); // { [id]: [{date, weight}] }
+  let selectedId = students[0]?.id || null;
+  let chart;
+
+  // —— Inicialización ——
+  function init(){
+    $('#year').textContent = new Date().getFullYear();
+    // Fecha por defecto: hoy
+    $('#logDate').value = toISODate(new Date());
+    fillStudentSelect();
+    bindUI();
+    renderAll();
+  }
+
+  function bindUI(){
+    $('#btnNewStudent').onclick = () => { $('#studentForm').style.display = 'block'; clearStudentForm(); }
+    $('#btnCancelStudent').onclick = () => { $('#studentForm').style.display = 'none'; }
+    $('#btnSaveStudent').onclick = saveStudent;
+    $('#btnDeleteStudent').onclick = deleteStudent;
+
+    $('#studentSelect').onchange = (e)=>{ selectedId = e.target.value || null; renderAll(); };
+    $('#search').oninput = filterSelectBySearch;
+
+    $('#btnAddLog').onclick = addLog;
+    $('#btnDeleteLog').onclick = deleteSelectedLog;
+
+    $('#btnApplyRange').onclick = renderChart;
+
+    $('#btnExport').onclick = exportCSV;
+    $('#btnExportJSON').onclick = exportJSON;
+    $('#fileImport').addEventListener('change', importFile);
+  }
+
+  function uid(){ return 's_' + Math.random().toString(36).slice(2,9); }
+
+  function persist(){
+    localStorage.setItem(LS_STUDENTS, JSON.stringify(students));
+    localStorage.setItem(LS_LOGS, JSON.stringify(logs));
+  }
+
+  function clearStudentForm(){
+    $('#stName').value = '';
+    $('#stHeight').value = '';
+    $('#stStart').value = '';
+    $('#stTarget').value = '';
+    $('#stNotes').value = '';
+  }
+
+  function fillStudentSelect(){
+    const sel = $('#studentSelect');
+    sel.innerHTML = '';
+    students.forEach(st => {
+      const opt = document.createElement('option');
+      opt.value = st.id; opt.textContent = st.name; sel.appendChild(opt);
+    });
+    if (students.length){
+      sel.value = selectedId || students[0].id;
+      selectedId = sel.value;
+    } else {
+      selectedId = null;
+    }
+  }
+
+  function filterSelectBySearch(){
+    const q = $('#search').value.trim().toLowerCase();
+    const sel = $('#studentSelect');
+    sel.innerHTML = '';
+    students.filter(s => s.name.toLowerCase().includes(q))
+      .forEach(st => { const o=document.createElement('option'); o.value=st.id; o.textContent=st.name; sel.appendChild(o); });
+    if (sel.options.length) sel.value = sel.options[0].value;
+    selectedId = sel.value || null;
+    renderAll();
+  }
+
+  // —— Alumnos ——
+  function saveStudent(){
+    const name = $('#stName').value.trim();
+    if (!name) return alert('Añade un nombre');
+    const height = Number($('#stHeight').value) || null;
+    const start = Number($('#stStart').value) || null;
+    const target = Number($('#stTarget').value) || null;
+    const notes = $('#stNotes').value.trim();
+
+    // Si existe alumno con el mismo nombre, actualizamos
+    const existing = students.find(s => s.name.toLowerCase() === name.toLowerCase());
+    if (existing){
+      existing.height = height; existing.start = start; existing.target = target; existing.notes = notes;
+      selectedId = existing.id;
+    } else {
+      const id = uid();
+      const st = {id, name, height, start, target, notes};
+      students.push(st);
+      logs[id] = [];
+      selectedId = id;
+      if (start){ logs[id].push({date: toISODate(new Date()), weight: start}); }
+    }
+    persist();
+    fillStudentSelect();
+    $('#studentForm').style.display = 'none';
+    renderAll();
+  }
+
+  function deleteStudent(){
+    if (!selectedId) return;
+    const st = students.find(s=>s.id===selectedId);
+    if (!st) return;
+    if (!confirm(`¿Eliminar a ${st.name} y todos sus registros?`)) return;
+    students = students.filter(s=>s.id!==selectedId);
+    delete logs[selectedId];
+    selectedId = students[0]?.id || null;
+    persist();
+    fillStudentSelect();
+    renderAll();
+  }
+
+  // —— Registros ——
+  function addLog(){
+    if (!selectedId) return alert('Primero crea o selecciona un alumno');
+    const date = $('#logDate').value;
+    const w = Number($('#logWeight').value);
+    if (!date || !w) return alert('Completa fecha y peso');
+    const arr = logs[selectedId] || (logs[selectedId] = []);
+    const ix = arr.findIndex(x=>x.date===date);
+    if (ix>=0) arr[ix].weight = w; else arr.push({date, weight:w});
+    arr.sort((a,b)=>a.date.localeCompare(b.date));
+    persist();
+    renderAll();
+  }
+
+  function deleteSelectedLog(){
+    if (!selectedId) return;
+    const rows = $$('#logsTable tbody tr');
+    const toDelete = rows.filter(r=>r.querySelector('input[type="checkbox"]').checked);
+    if (!toDelete.length) return alert('Selecciona al menos un registro');
+    const dates = new Set(toDelete.map(r=>r.dataset.date));
+    logs[selectedId] = (logs[selectedId]||[]).filter(x=>!dates.has(x.date));
+    persist();
+    renderAll();
+  }
+
+  // —— Exportar / Importar ——
+  function exportCSV(){
+    const lines = ['Alumno,Fecha,Peso,Altura_cm,Objetivo_kg,Notas'];
+    students.forEach(st=>{
+      const arr = logs[st.id]||[];
+      if (!arr.length) lines.push(`${q(st.name)},,,,${q(st.notes||'')}`);
+      arr.forEach(l=>{
+        lines.push(`${q(st.name)},${l.date},${l.weight},${st.height||''},${st.target||''},${q(st.notes||'')}`)
+      });
+    });
+    download('fte_datos.csv', lines.join('\n'));
+  }
+
+  function exportJSON(){
+    const data = { students, logs };
+    download('fte_datos.json', JSON.stringify(data,null,2));
+  }
+
+  function q(s){ return '"'+String(s).replaceAll('"','""')+'"'; }
+
+  function download(filename, content){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
+    a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  async function importFile(evt){
+    const file = evt.target.files[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {raw:true});
+    // Espera columnas: Name/Alumno, Date/Fecha, Weight/Peso, Height/Altura, Target/Objetivo, Notes/Notas
+    const map = (row, ...keys) => keys.find(k => k in row);
+
+    rows.forEach(r=>{
+      const nameKey = map(r,'Alumno','Name','NOMBRE','nombre');
+      const dateKey = map(r,'Fecha','Date','FECHA','date');
+      const weightKey = map(r,'Peso','Weight','PESO','weight');
+      const heightKey = map(r,'Altura','Height','ALTURA');
+      const targetKey = map(r,'Objetivo','Target','OBJETIVO');
+      const notesKey = map(r,'Notas','Notes','NOTAS');
+      const name = nameKey? String(r[nameKey]).trim() : null;
+      if (!name) return;
+      let st = students.find(s=>s.name.toLowerCase()===name.toLowerCase());
+      if (!st){
+        st = { id: uid(), name, height: null, start: null, target: null, notes: '' };
+        students.push(st); logs[st.id] = [];
       }
-    }
-
-    function guardarEnStorage() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ alumnos, controles }));
-    }
-
-    // ------- Utilidades -------
-    function calcularIMC(peso, altura) {
-      if (!peso || !altura || altura <= 0) return null;
-      return peso / (altura * altura);
-    }
-
-    function clasificarIMC(imc) {
-      if (imc === null || isNaN(imc)) return { label: "-", clase: "" };
-      if (imc < 18.5) return { label: "Bajo peso", clase: "tag-bajo" };
-      if (imc < 25) return { label: "Normal", clase: "tag-normal" };
-      if (imc < 30) return { label: "Sobrepeso", clase: "tag-sobrepeso" };
-      return { label: "Obesidad", clase: "tag-obesidad" };
-    }
-
-    function formatearFechaISO(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return iso;
-      return d.toLocaleDateString("es-ES");
-    }
-
-    // ------- Renderizado UI -------
-    function renderAlumnos() {
-      const tbody = document.querySelector("#tablaAlumnos tbody");
-      tbody.innerHTML = "";
-      alumnos.forEach(al => {
-        const imc = calcularIMC(al.peso, al.altura);
-        const imcText = imc ? imc.toFixed(1) : "";
-        const cl = clasificarIMC(imc);
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${al.nombre}</td>
-          <td>${al.sexo || ""}</td>
-          <td>${al.altura ? al.altura.toFixed(2) : ""}</td>
-          <td>${al.peso ? al.peso.toFixed(1) : ""}</td>
-          <td>${imcText}</td>
-          <td>${cl.label !== "-" ? `<span class="tag ${cl.clase}">${cl.label}</span>` : ""}</td>
-          <td>${al.obs || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      // Actualizar selects
-      const selControl = document.getElementById("controlAlumno");
-      const selEvo = document.getElementById("evoAlumno");
-      [selControl, selEvo].forEach(sel => {
-        sel.innerHTML = "";
-        const empty = document.createElement("option");
-        empty.value = "";
-        empty.textContent = "Seleccionar alumno";
-        sel.appendChild(empty);
-        alumnos.forEach(al => {
-          const opt = document.createElement("option");
-          opt.value = al.id;
-          opt.textContent = al.nombre;
-          sel.appendChild(opt);
-        });
-      });
-    }
-
-    function renderControles() {
-      const tbody = document.querySelector("#tablaControles tbody");
-      tbody.innerHTML = "";
-      controles
-        .slice()
-        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
-        .forEach(c => {
-          const al = alumnos.find(a => a.id === c.alumnoId);
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${al ? al.nombre : ""}</td>
-            <td>${formatearFechaISO(c.fecha)}</td>
-            <td>${c.peso.toFixed(1)}</td>
-            <td>${c.imc !== null ? c.imc.toFixed(0) : ""}</td>
-            <td>${c.grasa !== null ? c.grasa.toFixed(1) : ""}</td>
-            <td>${c.masa !== null ? c.masa.toFixed(1) : ""}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-    }
-
-    function renderEvolucion() {
-      const sel = document.getElementById("evoAlumno");
-      const alumnoId = sel.value;
-      const tbody = document.querySelector("#tablaEvolucion tbody");
-      tbody.innerHTML = "";
-
-      if (!alumnoId) {
-        if (chart) chart.destroy();
-        chart = null;
-        return;
-      }
-
-      const registros = controles
-        .filter(c => c.alumnoId === alumnoId)
-        .slice()
-        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-
-      const labels = [];
-      const pesos = [];
-
-      registros.forEach(c => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${formatearFechaISO(c.fecha)}</td>
-          <td>${c.peso.toFixed(1)}</td>
-          <td>${c.imc !== null ? c.imc.toFixed(0) : ""}</td>
-          <td>${c.grasa !== null ? c.grasa.toFixed(1) : ""}</td>
-          <td>${c.masa !== null ? c.masa.toFixed(1) : ""}</td>
-        `;
-        tbody.appendChild(tr);
-
-        labels.push(formatearFechaISO(c.fecha));
-        pesos.push(c.peso);
-      });
-
-      const ctx = document.getElementById("pesoChart");
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Peso (kg)",
-            data: pesos,
-            tension: 0.2,
-            borderWidth: 2,
-            pointRadius: 3
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              ticks: { maxRotation: 45, minRotation: 0 }
-            }
-          }
+      if (heightKey && r[heightKey]) st.height = Number(r[heightKey]) || st.height;
+      if (targetKey && r[targetKey]) st.target = Number(r[targetKey]) || st.target;
+      if (notesKey && r[notesKey]) st.notes = String(r[notesKey]);
+      if (dateKey && weightKey && r[weightKey]){
+        const date = normalizeDate(r[dateKey]);
+        const weight = Number(r[weightKey]);
+        if (date && weight){
+          const arr = logs[st.id];
+          const ix = arr.findIndex(x=>x.date===date);
+          if (ix>=0) arr[ix].weight = weight; else arr.push({date, weight});
         }
-      });
-    }
-
-    // ------- Eventos -------
-    document.getElementById("alumnoForm").addEventListener("submit", e => {
-      e.preventDefault();
-      const nombre = document.getElementById("alumnoNombre").value.trim();
-      const sexo = document.getElementById("alumnoSexo").value;
-      const altura = parseFloat(document.getElementById("alumnoAltura").value);
-      const peso = parseFloat(document.getElementById("alumnoPeso").value);
-      const obs = document.getElementById("alumnoObs").value.trim();
-
-      if (!nombre) {
-        alert("Escribe el nombre del alumno.");
-        return;
       }
-
-      // Si existe un alumno con el mismo nombre, actualizamos
-      let alumno = alumnos.find(a => a.nombre.toLowerCase() === nombre.toLowerCase());
-      if (alumno) {
-        alumno.sexo = sexo;
-        alumno.altura = isNaN(altura) ? null : altura;
-        alumno.peso = isNaN(peso) ? null : peso;
-        alumno.obs = obs;
-      } else {
-        alumno = {
-          id: Date.now().toString(),
-          nombre,
-          sexo,
-          altura: isNaN(altura) ? null : altura,
-          peso: isNaN(peso) ? null : peso,
-          obs
-        };
-        alumnos.push(alumno);
-      }
-
-      guardarEnStorage();
-      renderAlumnos();
-      alert("Alumno guardado correctamente.");
-      e.target.reset();
+    });
+    // Si algún alumno no tiene start y sí tiene primer registro, fijamos start al primero
+    students.forEach(st=>{
+      const arr = (logs[st.id]||[]).sort((a,b)=>a.date.localeCompare(b.date));
+      if (arr.length && (st.start==null)) st.start = arr[0].weight;
     });
 
-    // Recalcular IMC actual en el formulario de control cuando cambie alumno o peso
-    function actualizarIMCControl() {
-      const alumnoId = document.getElementById("controlAlumno").value;
-      const peso = parseFloat(document.getElementById("controlPeso").value);
-      const imcInput = document.getElementById("controlIMC");
-      const alumno = alumnos.find(a => a.id === alumnoId);
-      if (!alumno || isNaN(peso)) {
-        imcInput.value = "";
-        return;
-      }
-      const imc = calcularIMC(peso, alumno.altura);
-      imcInput.value = imc ? imc.toFixed(0) : "";
+    persist(); fillStudentSelect(); renderAll();
+    alert('Importación completada ✅');
+    evt.target.value = '';
+  }
+
+  function normalizeDate(v){
+    if (!v) return null;
+    if (v instanceof Date) return toISODate(v);
+    if (typeof v === 'number'){ // Excel serial
+      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+      return toISODate(d);
     }
+    const s = String(v);
+    // Formatos: DD/MM/AAAA, AAAA-MM-DD, MM/DD/AAAA
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    if (iso.test(s)) return s;
+    const dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (dmy){
+      const [_,d,m,y] = dmy; return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+    const mdy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (mdy){
+      const [_,m,d,y] = mdy; return `${y.length===2?('20'+y):y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+    return null;
+  }
 
-    document.getElementById("controlAlumno").addEventListener("change", actualizarIMCControl);
-    document.getElementById("controlPeso").addEventListener("input", actualizarIMCControl);
+  // —— Render ——
+  function renderAll(){
+    fillStudentSelect();
+    renderHeader();
+    renderTable();
+    renderChart();
+  }
 
-    document.getElementById("controlForm").addEventListener("submit", e => {
-      e.preventDefault();
-      const alumnoId = document.getElementById("controlAlumno").value;
-      const fecha = document.getElementById("controlFecha").value;
-      const peso = parseFloat(document.getElementById("controlPeso").value);
-      const grasa = parseFloat(document.getElementById("controlGrasa").value);
-      const masa = parseFloat(document.getElementById("controlMasa").value);
+  function getSelected(){ return students.find(s=>s.id===selectedId) || null; }
 
-      if (!alumnoId || !fecha || isNaN(peso)) {
-        alert("Completa alumno, fecha y peso.");
-        return;
-      }
+  function renderHeader(){
+    const st = getSelected();
+    $('#selectedName').textContent = st? st.name : '—';
+    $('#selectedHeight').textContent = st?.height ?? '—';
+    $('#selectedTarget').textContent = st?.target ?? '—';
 
-      const alumno = alumnos.find(a => a.id === alumnoId);
-      const imc = calcularIMC(peso, alumno ? alumno.altura : null);
+    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
+    arr.sort((a,b)=>a.date.localeCompare(b.date));
 
-      controles.push({
-        id: Date.now().toString(),
-        alumnoId,
-        fecha,
-        peso,
-        imc: imc || null,
-        grasa: isNaN(grasa) ? null : grasa,
-        masa: isNaN(masa) ? null : masa
-      });
+    const current = arr.length? arr[arr.length-1].weight : null;
+    const start = st?.start ?? (arr[0]?.weight ?? null);
+    const total = (current!=null && start!=null)? current - start : null;
+    const last7 = changeInDays(arr,7);
 
-      guardarEnStorage();
-      renderControles();
-      renderEvolucion();
-      alert("Control guardado.");
-      e.target.reset();
-      document.getElementById("controlIMC").value = "";
+    const bmi = (st?.height && current)? (current / Math.pow(st.height/100,2)) : null;
+
+    $('#kpiCurrent').textContent = fmt(current,1);
+    $('#kpiTotal').textContent = (total!=null? (total>0? '+' : '') + fmt(total,1) + ' kg' : '—');
+    $('#kpi7').textContent = (last7!=null? (last7>0? '+' : '') + fmt(last7,1) + ' kg' : '—');
+    $('#kpiBMI').textContent = bmi? fmt(bmi,1) : '—';
+
+    // KPI colores
+    setKpiColor('#kpiTotal', total);
+    setKpiColor('#kpi7', last7);
+  }
+
+  function setKpiColor(sel, val){
+    const el = $(sel).closest('.kpi');
+    el.classList.remove('good','warn','bad');
+    if (val==null) return;
+    // pérdida de peso = verde, ganancia = naranja/rojo
+    if (val < -0.1) el.classList.add('good');
+    else if (val <= 0.1) el.classList.add('warn');
+    else el.classList.add('bad');
+  }
+
+  function changeInDays(arr, days){
+    if (!arr.length) return null;
+    const to = new Date(arr[arr.length-1].date);
+    const from = new Date(to); from.setDate(from.getDate() - days);
+    const before = arr.filter(x=> new Date(x.date) <= to && new Date(x.date) >= from);
+    if (before.length<2) return null;
+    return before[before.length-1].weight - before[0].weight;
+  }
+
+  function renderTable(){
+    const tbody = $('#logsTable tbody');
+    tbody.innerHTML = '';
+    const st = getSelected();
+    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
+    arr.sort((a,b)=>a.date.localeCompare(b.date));
+    let prev = null;
+    arr.forEach(x=>{
+      const tr = document.createElement('tr'); tr.dataset.date = x.date;
+      const diff = prev? (x.weight - prev.weight) : null; prev = x;
+      tr.innerHTML = `
+        <td>${x.date}</td>
+        <td>${fmt(x.weight,1)}</td>
+        <td>${diff==null? '—' : (diff>0? '+' : '') + fmt(diff,1) + ' kg'}</td>
+        <td><input type="checkbox"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderChart(){
+    const st = getSelected();
+    const arr = (st && logs[st.id]) ? [...logs[st.id]] : [];
+    arr.sort((a,b)=>a.date.localeCompare(b.date));
+
+    const from = $('#fromDate').value ? new Date($('#fromDate').value) : null;
+    const to = $('#toDate').value ? new Date($('#toDate').value) : null;
+    const filtered = arr.filter(p=>{
+      const d = new Date(p.date);
+      return (!from || d>=from) && (!to || d<=to);
     });
 
-    document.getElementById("evoAlumno").addEventListener("change", renderEvolucion);
+    const labels = filtered.map(x=>x.date);
+    const weights = filtered.map(x=>x.weight);
 
-    // ------- Inicio -------
-    cargarDesdeStorage();
-    renderAlumnos();
-    renderControles();
-    renderEvolucion();
-  </script>
+    const ctx = document.getElementById('chart');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Peso (kg)',
+            data: weights,
+            borderColor: '#facc15',
+            backgroundColor: 'rgba(250,204,21,.12)',
+            tension: .3,
+            fill: true,
+            pointRadius: 3,
+          },
+          ...(st?.target? [{
+            label: 'Objetivo',
+            data: labels.map(()=>st.target),
+            borderDash: [6,6],
+            borderColor: '#9ca3af',
+            pointRadius: 0,
+          }] : [])
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#e5e7eb' } } },
+        scales: {
+          x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } },
+          y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,.06)' } }
+        }
+      }
+    });
+  }
+
+  // —— Carga inicial de demo si no hay datos ——
+  function seedIfEmpty(){
+    if (students.length) return;
+    const a = {id:uid(), name:'Alumno Demo', height:170, start:78, target:70, notes:'Ejemplo'};
+    students.push(a); logs[a.id] = [
+      {date:'2025-10-01', weight:78},
+      {date:'2025-10-08', weight:77.1},
+      {date:'2025-10-15', weight:76.6},
+      {date:'2025-10-22', weight:76.0},
+      {date:'2025-11-05', weight:75.2},
+      {date:'2025-11-19', weight:74.9},
+    ];
+    persist();
+  }
+
+  seedIfEmpty();
+  init();
+</script>
 </body>
 </html>
